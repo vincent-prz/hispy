@@ -1,6 +1,5 @@
 module Parser where
 
-import Control.Applicative
 import Data.Char (isDigit)
 
 type Token = String
@@ -32,9 +31,9 @@ parse = readFromTokens . tokenize
 
 readFromTokens :: [Token] -> Either SyntaxError Exp
 readFromTokens toks = case parseExp toks of
-  Nothing -> Left (SyntaxError "Could not parse")
-  (Just (expr, [])) -> Right expr
-  (Just (_, t : _)) -> Left (SyntaxError ("Unexpected token : " ++ show t))
+  (Nothing, []) -> Left (SyntaxError "unexpected EOF")
+  (Nothing, t : _) -> Left (SyntaxError ("unexpected token : " ++ t))
+  (Just expr, _) -> Right expr
 
 atom :: Token -> Atom
 atom t
@@ -59,30 +58,37 @@ split x (y : ys) =
 
 -- parsing lib
 
-type Parser a = [Token] -> Maybe (a, [Token])
+type Parser a = [Token] -> (Maybe a, [Token])
 
 parseExp :: Parser Exp
-parseExp toks = parseList toks <|> parseAtom toks
+parseExp toks =
+  let (listResult, listRest) = parseList toks
+      (atomResult, atomRest) = parseAtom toks
+   in case listResult of
+        Just _ -> (listResult, listRest)
+        Nothing -> (atomResult, atomRest)
 
 parseAtom :: Parser Exp
-parseAtom [] = Nothing
-parseAtom ("(" : _) = Nothing
-parseAtom (")" : _) = Nothing
-parseAtom (t : ts) = Just (Atom (atom t), ts)
+parseAtom [] = (Nothing, [])
+parseAtom ("(" : ts) = (Nothing, ts)
+parseAtom (")" : ts) = (Nothing, ts)
+parseAtom (t : ts) = (Just (Atom (atom t)), ts)
 
 parseList :: Parser Exp
-parseList [] = Nothing
-parseList ("(" : ts) = do
-  (list, rest) <- parseMany parseExp ts
-  case rest of
-    [] -> Nothing
-    ")" : rest' -> return (List list, rest')
-    _ -> Nothing
-parseList _ = Nothing
+parseList [] = (Nothing, [])
+parseList ("(" : ts) =
+  let (listResult, listRest) = parseMany parseExp ts
+   in case listRest of
+        [] -> (Nothing, [])
+        ")" : rest' -> (List <$> listResult, rest')
+        _ -> (Nothing, listRest)
+parseList toks = (Nothing, toks)
 
 parseMany :: Parser Exp -> Parser [Exp]
-parseMany p toks = case p toks of
-  Nothing -> Just ([], toks)
-  Just (singleParse, rest) -> do
-    (otherParses, rest') <- parseMany p rest
-    return (singleParse : otherParses, rest')
+parseMany p toks =
+  let (singleParse, rest) = p toks
+   in case singleParse of
+        Nothing -> (Just [], toks)
+        Just sp ->
+          let (otherParses, rest') = parseMany p rest
+           in ((sp :) <$> otherParses, rest')
