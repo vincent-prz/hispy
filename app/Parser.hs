@@ -1,4 +1,6 @@
-module Parser where
+{-# LANGUAGE InstanceSigs #-}
+
+module Parser (Exp (..), Atom (..), ANumber (..), parse) where
 
 import Data.Char (isDigit)
 
@@ -7,11 +9,65 @@ type Token = String
 data Exp = Atom Atom | List [Exp]
   deriving (Show)
 
-data Atom = Symbol String | ANumber ANumber
-  deriving (Show)
+data Atom
+  = ASymbol String
+  | ANumber ANumber
+  | ABool Bool
+  | AFunc ([Exp] -> Exp)
+
+instance Show Atom where
+  show :: Atom -> String
+  show (ASymbol s) = s
+  show (ANumber n) = show n
+  show (ABool b) = show b
+  show (AFunc _) = "<func>"
 
 data ANumber = AInt Int | AFloat Float
-  deriving (Show)
+  deriving (Show, Eq)
+
+instance Num ANumber where
+  (*) :: ANumber -> ANumber -> ANumber
+  (*) (AInt n) (AInt m) = AInt (n * m)
+  (*) (AFloat n) (AFloat m) = AFloat (n * m)
+  (*) (AInt n) (AFloat m) = AFloat (fromIntegral n * m)
+  (*) (AFloat n) (AInt m) = AFloat (n * fromIntegral m)
+  (+) :: ANumber -> ANumber -> ANumber
+  (+) (AInt n) (AInt m) = AInt (n + m)
+  (+) (AFloat n) (AFloat m) = AFloat (n + m)
+  (+) (AInt n) (AFloat m) = AFloat (fromIntegral n + m)
+  (+) (AFloat n) (AInt m) = AFloat (n + fromIntegral m)
+  (-) :: ANumber -> ANumber -> ANumber
+  (-) (AInt n) (AInt m) = AInt (n - m)
+  (-) (AFloat n) (AFloat m) = AFloat (n - m)
+  (-) (AInt n) (AFloat m) = AFloat (fromIntegral n - m)
+  (-) (AFloat n) (AInt m) = AFloat (n - fromIntegral m)
+  abs :: ANumber -> ANumber
+  abs (AInt n) = AInt (abs n)
+  abs (AFloat n) = AFloat (abs n)
+  signum :: ANumber -> ANumber
+  signum (AInt n) = AInt (signum n)
+  signum (AFloat n) = AFloat (signum n)
+  fromInteger :: Integer -> ANumber
+  fromInteger integer = AInt (fromInteger integer)
+  negate :: ANumber -> ANumber
+  negate (AInt n) = AInt (negate n)
+  negate (AFloat n) = AFloat (negate n)
+
+instance Fractional ANumber where
+  fromRational :: Rational -> ANumber
+  fromRational r = AFloat (fromRational r)
+  (/) :: ANumber -> ANumber -> ANumber
+  (/) (AInt n) (AInt m) = AFloat (fromIntegral n / fromIntegral m)
+  (/) (AFloat n) (AFloat m) = AFloat (n / m)
+  (/) (AInt n) (AFloat m) = AFloat (fromIntegral n / m)
+  (/) (AFloat n) (AInt m) = AFloat (n / fromIntegral m)
+
+instance Ord ANumber where
+  (<=) :: ANumber -> ANumber -> Bool
+  (<=) (AInt n) (AInt m) = n <= m
+  (<=) (AFloat n) (AFloat m) = n <= m
+  (<=) (AInt n) (AFloat m) = fromIntegral n <= m
+  (<=) (AFloat n) (AInt m) = n <= fromIntegral m
 
 newtype SyntaxError = SyntaxError String
   deriving (Show)
@@ -39,7 +95,9 @@ atom :: Token -> Atom
 atom t
   | isIntAtom t = ANumber (AInt (read t))
   | isFloatAtom t = ANumber (AFloat (read t))
-  | otherwise = Symbol t
+  | t == "True" = ABool True
+  | t == "False" = ABool False
+  | otherwise = ASymbol t
   where
     isIntAtom = all isDigit
     isFloatAtom tok =
