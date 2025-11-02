@@ -3,11 +3,16 @@
 module Parser (Exp (..), Atom (..), ANumber (..), parse) where
 
 import Data.Char (isDigit)
+import Data.List (intercalate)
 
 type Token = String
 
 data Exp = Atom Atom | List [Exp]
-  deriving (Show)
+
+instance Show Exp where
+  show :: Exp -> String
+  show (Atom a) = show a
+  show (List e) = "(" ++ intercalate "," (map show e) ++ ")"
 
 data Atom
   = ASymbol String
@@ -23,7 +28,12 @@ instance Show Atom where
   show (AFunc _) = "<func>"
 
 data ANumber = AInt Int | AFloat Float
-  deriving (Show, Eq)
+  deriving (Eq)
+
+instance Show ANumber where
+  show :: ANumber -> String
+  show (AInt n) = show n
+  show (AFloat f) = show f
 
 instance Num ANumber where
   (*) :: ANumber -> ANumber -> ANumber
