@@ -1,4 +1,4 @@
-module Eval (eval, evalSE) where
+module Eval (eval, evalSE, standardEnv) where
 
 import Control.Monad.State
 import qualified Data.Map as Map
