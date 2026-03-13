@@ -67,6 +67,7 @@ executable hispy
         Eval
         Exp
         Parser
+        RuntimeError
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:

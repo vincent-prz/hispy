@@ -2,6 +2,7 @@ module Env (Env, standardEnv) where
 
 import qualified Data.Map as Map
 import Exp (ANumber (..), Atom (..), Exp (..))
+import RuntimeError(RuntimeError(..))
 
 type Env = Map.Map String Exp
 
@@ -16,30 +17,31 @@ standardEnv =
       ("<", Atom (AFunc lt)),
       (">=", Atom (AFunc ge)),
       ("<=", Atom (AFunc le)),
-      ("=", Atom (AFunc equals)),
-      ("begin", Atom (AFunc last)),
+      ("=", Atom (AFunc (pure . equals))),
+      ("begin", Atom (AFunc (pure. last))),
       ("pi", Atom (ANumber (AFloat pi)))
     ]
 
-add :: [Exp] -> Exp
+add :: [Exp] -> Either RuntimeError Exp
 add = arithOp (+) "add"
 
-substract :: [Exp] -> Exp
+substract :: [Exp] -> Either RuntimeError Exp
 substract = arithOp (-) "substract"
 
-multiply :: [Exp] -> Exp
+multiply :: [Exp] -> Either RuntimeError Exp
 multiply = arithOp (*) "multiply"
 
-divide :: [Exp] -> Exp
+divide :: [Exp] -> Either RuntimeError Exp
 divide = arithOp (/) "divide"
 
-arithOp :: (ANumber -> ANumber -> ANumber) -> String -> [Exp] -> Exp
+arithOp :: (ANumber -> ANumber -> ANumber) -> String -> [Exp] -> Either RuntimeError Exp
 arithOp _ opName [] = error ("apply " ++ opName ++ " on empty list")
-arithOp _ _ [Atom (ANumber n)] = Atom (ANumber n)
+arithOp _ _ [Atom (ANumber n)] = Right (Atom (ANumber n))
 arithOp op opName (Atom (ANumber n) : rest) = case arithOp op opName rest of
-  Atom (ANumber m) -> Atom (ANumber (op n m))
-  _ -> error ("try to apply " ++ opName ++ " on something which is not a number")
-arithOp _ opName _ = error ("try to apply " ++ opName ++ " on something which is not a number")
+  Right (Atom (ANumber m)) -> Right (Atom (ANumber (op n m)))
+  Right _ -> Left (RuntimeError ("try to apply " ++ opName ++ " on something which is not a number"))
+  Left err -> Left err
+arithOp _ opName _ = Left (RuntimeError ("try to apply " ++ opName ++ " on something which is not a number"))
 
 equals :: [Exp] -> Exp
 equals [] = error "= applied on empty list"
@@ -59,22 +61,22 @@ fromBool :: Bool -> Exp
 fromBool True = Atom (ABool True)
 fromBool False = Atom (ABool False)
 
-gt :: [Exp] -> Exp
+gt :: [Exp] -> Either RuntimeError Exp
 gt = booleanArithOp (>) ">"
 
-lt :: [Exp] -> Exp
+lt :: [Exp] -> Either RuntimeError Exp
 lt = booleanArithOp (<) "<"
 
-ge :: [Exp] -> Exp
+ge :: [Exp] -> Either RuntimeError Exp
 ge = booleanArithOp (>=) ">="
 
-le :: [Exp] -> Exp
+le :: [Exp] -> Either RuntimeError Exp
 le = booleanArithOp (<=) "<="
 
-booleanArithOp :: (ANumber -> ANumber -> Bool) -> String -> [Exp] -> Exp
+booleanArithOp :: (ANumber -> ANumber -> Bool) -> String -> [Exp] -> Either RuntimeError Exp
 booleanArithOp _ opName [] = error ("apply " ++ opName ++ " on empty list")
-booleanArithOp op _ [Atom (ANumber x), Atom (ANumber y)] = fromBool (op x y)
+booleanArithOp op _ [Atom (ANumber x), Atom (ANumber y)] = Right (fromBool (op x y))
 booleanArithOp _ opName exprs
   | length exprs /= 2 =
-      error ("applied " ++ opName ++ " on " ++ show (length exprs) ++ "arg, expected 2")
+      Left (RuntimeError ("applied " ++ opName ++ " on " ++ show (length exprs) ++ "arg, expected 2"))
   | otherwise = error ("try to apply " ++ opName ++ " on something which is not a number")

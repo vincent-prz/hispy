@@ -1,13 +1,11 @@
-module Eval (eval, standardEnv, RuntimeError(..)) where
+module Eval (eval, standardEnv) where
 
-import Control.Monad.State
+import Control.Monad.State ( modify, MonadState(get), State )
+import Control.Monad.Except (ExceptT, MonadError (throwError))
 import qualified Data.Map as Map
 import Env (Env, standardEnv)
 import Exp (Atom (..), Exp (..))
-import Control.Monad.Except (ExceptT, MonadError (throwError))
-
-
-newtype RuntimeError = RuntimeError String
+import RuntimeError(RuntimeError(..))
 
 eval :: Exp -> ExceptT RuntimeError (State Env) Exp
 eval (Atom (ASymbol s)) = do
@@ -22,7 +20,7 @@ eval (List (func : args)) = do
   evaluatedFunc <- eval func
   evaluatedArgs <- mapM eval args
   case evaluatedFunc of
-    Atom (AFunc f) -> return (f evaluatedArgs)
+    Atom (AFunc f) -> either throwError return (f evaluatedArgs)
     _ -> throwError (RuntimeError "callee is not a function")
 eval _ = error "unhandled case if eval"
 

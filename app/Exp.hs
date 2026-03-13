@@ -2,6 +2,7 @@
 module Exp(ANumber(..), Atom(..), Exp(..)) where
 
 import Data.List (intercalate)
+import RuntimeError(RuntimeError)
 
 data Exp = Atom Atom | List [Exp]
 
@@ -14,7 +15,7 @@ data Atom
   = ASymbol String
   | ANumber ANumber
   | ABool Bool
-  | AFunc ([Exp] -> Exp)
+  | AFunc ([Exp] -> Either RuntimeError Exp)
 
 instance Show Atom where
   show :: Atom -> String

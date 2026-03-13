@@ -2,7 +2,8 @@ module Main where
 
 import Control.Monad.State
 import Env (Env, standardEnv)
-import Eval (eval, RuntimeError(..))
+import Eval (eval)
+import RuntimeError(RuntimeError(..))
 import Parser (parse)
 import System.IO (hFlush, stdout)
 import Control.Monad.Except (ExceptT, runExceptT)
