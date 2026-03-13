@@ -3,7 +3,7 @@ module Eval (eval, standardEnv, RuntimeError(..)) where
 import Control.Monad.State
 import qualified Data.Map as Map
 import Env (Env, standardEnv)
-import Parser (Atom (..), Exp (..))
+import Exp (Atom (..), Exp (..))
 import Control.Monad.Except (ExceptT, MonadError (throwError))
 
 

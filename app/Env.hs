@@ -1,7 +1,7 @@
 module Env (Env, standardEnv) where
 
 import qualified Data.Map as Map
-import Parser (ANumber (..), Atom (..), Exp (..))
+import Exp (ANumber (..), Atom (..), Exp (..))
 
 type Env = Map.Map String Exp
 
